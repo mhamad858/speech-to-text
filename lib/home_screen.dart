@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initSpeechState();
+    _loadRecognizedText();  // Load the saved text
     _loadHistory();
   }
 
@@ -49,6 +50,20 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isListening = available;
     });
+  }
+
+  // Load recognized text from SharedPreferences
+  void _loadRecognizedText() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _recognizedText = prefs.getString('recognized_text') ?? "";
+    });
+  }
+
+  // Save recognized text to SharedPreferences
+  void _saveRecognizedText() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('recognized_text', _recognizedText);
   }
 
   // Load history from SharedPreferences
@@ -70,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _speech.listen(onResult: (result) {
       setState(() {
         _recognizedText = result.recognizedWords;
+        _saveRecognizedText();  // Save text whenever it updates
       });
     });
     setState(() {
@@ -97,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _recognizedText = "";
     });
     _speech.stop();
+    _saveRecognizedText();  // Clear saved text when deleted
     _showSnackBar("Text Deleted");
   }
 
@@ -108,10 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _recognizedText = "";
       });
       _saveHistory();
+      _saveRecognizedText();  // Save the empty text after saving history
       _showSnackBar("Text Saved to History");
     }
   }
-
+//(Speech To Text)،(Text To Speech)،(Translation)
   // Show a Snackbar with a message
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -120,21 +138,19 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  // Navigate to history screen
+  // Navigate to history and return selected text
   void _navigateToHistory() async {
     final selectedTexts = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HistoryScreen(
-          history: _history,
+        builder: (context) => HistoryScreen(history: _history,
           onDelete: (selectedIndexes) {
             setState(() {
-              selectedIndexes.sort(
-                  (a, b) => b.compareTo(a)); // Delete from last index first
+              selectedIndexes.sort((a, b) => b.compareTo(a));
               for (int index in selectedIndexes) {
                 _history.removeAt(index);
               }
-              _saveHistory(); // Save updated history
+              _saveHistory();
             });
           },
         ),
@@ -143,8 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (selectedTexts != null && selectedTexts.isNotEmpty) {
       setState(() {
-        _recognizedText +=
-            "${selectedTexts.join(" ")}"; // Combine selected texts with newline separator
+        _recognizedText += " ${selectedTexts.join(" ")}"; 
+        _saveRecognizedText();  // Save the updated text
       });
     }
   }
@@ -155,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.pink,
         title: const Text(
-          "STT-RE-CO",
+          "Speech To Text",
           style: TextStyle(
             color: Colors.yellowAccent,
             fontWeight: FontWeight.bold,
@@ -176,12 +192,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.pink,
+                
               ),
               child: Text(
                 'Select a service',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
+                  color: Color.fromARGB(255, 255, 255, 255),
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -247,13 +264,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 _isListening ? "Speech" : "Stop",
                 style: const TextStyle(
                     color: Colors.black,
-                    fontSize: 15,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 232, 60, 141),
-              ),
-            ),
+              ),),
             const SizedBox(height: 20),
             Container(
               height: MediaQuery.of(context).size.height / 4,
@@ -341,26 +357,27 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
 
   // Modified speak function to disable the button while speaking
   Future<void> speak(String text) async {
-    if (text.isEmpty || _isSpeaking) {
-      return; // Prevent speaking if text is empty or speaking is already happening
-    }
-
-    setState(() {
-      _isSpeaking = true; // Disable the button by setting _isSpeaking to true
-    });
-
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setPitch(1.0);
-    await flutterTts.setSpeechRate(1.0);
-    await flutterTts.speak(text);
-
-    // When the speaking is finished, re-enable the button
-    flutterTts.setCompletionHandler(() {
-      setState(() {
-        _isSpeaking = false;
-      });
-    });
+  if (text.isEmpty || _isSpeaking) {
+    return; // Prevent speaking if text is empty or speaking is already happening
   }
+
+  setState(() {
+    _isSpeaking = true; // Disable the button by setting _isSpeaking to true
+  });
+
+  await flutterTts.setLanguage("en-US");
+  await flutterTts.setPitch(1.0);
+  await flutterTts.setSpeechRate(1.0);
+
+  // Set completion handler before speaking
+  flutterTts.setCompletionHandler(() {
+    setState(() {
+      _isSpeaking = false; // Re-enable button after speaking is done
+    });
+  });
+
+  await flutterTts.speak(text);
+}
 
   Future<void> stopSpeaking() async {
     await flutterTts.stop(); // Stop the speaking if needed
@@ -372,7 +389,20 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
   @override
   void initState() {
     super.initState();
+    _loadText(); // Load the saved text when the screen is initialized
     _loadHistoryFromStorage();
+  }
+
+  Future<void> _loadText() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      textController.text = prefs.getString('textToSpeechText') ?? "";
+    });
+  }
+
+  Future<void> _saveText() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('textToSpeechText', textController.text);
   }
 
   Future<void> _loadHistoryFromStorage() async {
@@ -401,6 +431,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
     setState(() {
       textController.clear();
     });
+    _saveText(); // Save the cleared text
   }
 
   void _copyText() {
@@ -439,13 +470,12 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
           },
         ),
       ),
-    );
-
-    if (selectedTexts != null && selectedTexts.isNotEmpty) {
+    );if (selectedTexts != null && selectedTexts.isNotEmpty) {
       setState(() {
         textController.text += (textController.text.isNotEmpty ? " " : "") +
             selectedTexts.join(" ");
       });
+      _saveText(); // Save the updated text
     }
   }
 
@@ -558,9 +588,8 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                     : "Listen", // Change the button text based on speaking status
                 style: const TextStyle(
                     color: Colors.black,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold),
-              ),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 232, 60, 141),
               ),
@@ -592,6 +621,9 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                       ),
                     ),
                     maxLines: 5,
+                    onChanged: (text) {
+                      _saveText(); // Save the text whenever it changes
+                    },
                   ),
                 ),
               ),
@@ -636,82 +668,120 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
 
 class HistoryScreen extends StatefulWidget {
   final List<String> history;
+  final Function(List<int>) onDelete;
 
-  const HistoryScreen(
-      {super.key,
-      required this.history,
-      required Null Function(dynamic selectedIndexes) onDelete});
+  const HistoryScreen({
+    Key? key,
+    required this.history,
+    required this.onDelete,
+  }) : super(key: key);
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  _HistoryScreenState createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final List<String> _selectedTexts = [];
+  final Set<int> _selectedIndexes = {};
+  bool _isSelectAll = false;
 
-  void _deleteSelectedTexts() {
+  void _toggleSelectAll() {
     setState(() {
-      widget.history.removeWhere((text) => _selectedTexts.contains(text));
-      _selectedTexts.clear();
+      if (_isSelectAll) {
+        _selectedIndexes.clear();
+      } else {
+        _selectedIndexes.addAll(List.generate(widget.history.length, (index) => index));
+      }
+      _isSelectAll = !_isSelectAll;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Selected texts deleted")),
-    );
+  }
+
+  void _deleteSelected() {
+    if (_selectedIndexes.isNotEmpty) {
+      widget.onDelete(_selectedIndexes.toList());
+      setState(() {
+        _selectedIndexes.clear();
+        _isSelectAll = false;
+      });
+    }
+  }
+
+  void _returnSelected() {
+    if (_selectedIndexes.isNotEmpty) {
+      List<String> selectedTexts = _selectedIndexes.map((index) => widget.history[index]).toList();
+      Navigator.pop(context, selectedTexts);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "History",
-          style: TextStyle(
-              color: Colors.yellowAccent,
-              fontSize: 25,
-              fontWeight: FontWeight.bold),
-        ),
+        title: const Text('History',
+        style: TextStyle(
+            color: Colors.yellowAccent,
+            fontWeight: FontWeight.bold,
+            fontSize: 25,
+          ),),
         backgroundColor: Colors.pink,
         actions: [
+          // Select All Checkbox
+          IconButton(
+            icon: Icon(
+              _isSelectAll ? Icons.check_box : Icons.check_box_outline_blank,
+              color: const Color.fromARGB(255, 80, 75, 75),
+            ),
+            onPressed: _toggleSelectAll,
+          ),
+          // Delete Icon
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.white),
-            onPressed: _selectedTexts.isEmpty
-                ? null
-                : _deleteSelectedTexts, // Delete selected texts
+            onPressed: _deleteSelected,
           ),
+          // Check Icon (Return Selected)
           IconButton(
             icon: const Icon(Icons.check, color: Colors.white),
-            onPressed: () {
-              if (_selectedTexts.isNotEmpty) {
-                Navigator.pop(context,
-                    _selectedTexts); // Return selected texts to the main screen
-              }
-            },
+            onPressed: _returnSelected,
           ),
         ],
       ),
-      body: widget.history.isEmpty
-          ? const Center(child: Text("No history available"))
-          : ListView.builder(
-              itemCount: widget.history.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: Checkbox(
-                    value: _selectedTexts.contains(widget.history[index]),
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          _selectedTexts.add(widget.history[index]);
-                        } else {
-                          _selectedTexts.remove(widget.history[index]);
-                        }
-                      });
-                    },
-                  ),
-                  title: Text(widget.history[index]),
-                  onTap: () {},
-                );
+      body: 
+      widget.history.isEmpty?
+      const Center(child: Text("No history available"))
+      :ListView.builder(
+        itemCount: widget.history.length,
+        itemBuilder: (context, index) {
+          final text = widget.history[index];
+          final isSelected = _selectedIndexes.contains(index);
+
+          return ListTile(
+            title: Text(text),
+            
+            leading: Checkbox(
+              value: isSelected,
+              onChanged: (bool? checked) {
+                setState(() {
+                  if (checked == true) {
+                    _selectedIndexes.add(index);
+                  } else {
+                    _selectedIndexes.remove(index);
+                  }
+                  _isSelectAll = _selectedIndexes.length == widget.history.length;
+                });
               },
             ),
+            onTap: () {
+              setState(() {
+                if (isSelected) {
+                  _selectedIndexes.remove(index);
+                } else {
+                  _selectedIndexes.add(index);
+                }
+                _isSelectAll = _selectedIndexes.length == widget.history.length;
+              });
+            },
+          );
+        },
+      ),
     );
   }
 }

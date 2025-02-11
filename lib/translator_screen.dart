@@ -28,9 +28,10 @@ class _TranslatorScreen extends State<TranslatorScreen> {
   void initState() {
     super.initState();
     _loadHistory();
-    // Load history on app start
+    _loadSavedText(); // Load saved input and output text when screen is opened
   }
 
+  // Load translation history
   Future<void> _loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final historyData = prefs.getString('translationHistory');
@@ -44,40 +45,72 @@ class _TranslatorScreen extends State<TranslatorScreen> {
     }
   }
 
-  Future<void> _saveHistory() async {
+  // Load saved text (input and output)
+  Future<void> _loadSavedText() async {
     final prefs = await SharedPreferences.getInstance();
-    final historyData =
-        jsonEncode(translationHistory.map((item) => item.toJson()).toList());
-    await prefs.setString('translationHistory', historyData);
+    final savedInputText = prefs.getString('inputText') ?? '';
+    final savedOutputText = prefs.getString('outputText') ?? 'Result here...';
+
+    if (mounted) {
+      setState(() {
+        inputText = savedInputText;
+        inputController.text =
+            savedInputText; // Ensure the text is restored in the field
+        outputController.text = savedOutputText;
+      });
+    }
   }
 
-  Future<void> translatorText() async {
-    final translated = await translator.translate(
-      inputText,
-      from: inputLanguage,
-      to: outputLanguage,
-    );
-    setState(() {
-      outputController.text = translated.text;
-    });
+  // Save text to SharedPreferences
+  Future<void> _saveText() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('inputText', inputText); // Save input text
+    await prefs.setString(
+        'outputText', outputController.text); // Save output text
   }
 
+  // Translator function
+  // Translator function (Does not add to history automatically)
+Future<void> translatorText() async {
+  final translated = await translator.translate(
+    inputText,
+    from: inputLanguage,
+    to: outputLanguage,
+  );
+
+  setState(() {
+    outputController.text = translated.text;
+  });
+
+  _saveText(); // Save output text after translation
+}
+
+  // Copy input text
   void _copyText() {
     if (inputController.text.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: inputController.text));
       _showSnackBar("Text copied!");
-    }
+    }else {
+        _showSnackBar("This text is already saved in history.");
+      }
   }
 
-  void _deleteText() {
+  // Delete input and output text
+  void _deleteText() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('inputText'); // Remove saved input text
+    await prefs.remove('outputText'); // Remove saved output text
+
     setState(() {
       inputController.clear();
       outputController.clear();
       inputText = "";
     });
+
     _showSnackBar("Text deleted!");
   }
 
+  // Save translation history
   void _saveToHistory() {
     if (inputText.isNotEmpty && outputController.text.isNotEmpty) {
       bool exists = translationHistory.any((entry) =>
@@ -101,6 +134,14 @@ class _TranslatorScreen extends State<TranslatorScreen> {
     }
   }
 
+  // Save history to SharedPreferences
+  Future<void> _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final historyData =
+        jsonEncode(translationHistory.map((item) => item.toJson()).toList());
+    await prefs.setString('translationHistory', historyData);
+  } // Show Snackbar
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
@@ -108,6 +149,7 @@ class _TranslatorScreen extends State<TranslatorScreen> {
     ));
   }
 
+  // Navigate to History Screen
   void _navigateToHistory() async {
     final selectedTexts = await Navigator.push(
       context,
@@ -133,12 +175,20 @@ class _TranslatorScreen extends State<TranslatorScreen> {
         // Append selected texts to the existing input text with spaces between them
         inputController.text =
             "${inputController.text} ${selectedTexts.join(" ")}".trim();
-        inputText = inputController.text; // Update the inputText variable
+        inputText = inputController.text;
       });
 
       // Trigger translation for the updated input text
       await translatorText();
     }
+  }
+
+  // Custom onChanged function to save input text
+  void _onInputChanged(String value) {
+    setState(() {
+      inputText = value;
+    });
+    _saveText(); // Save whenever input text changes
   }
 
   @override
@@ -240,11 +290,8 @@ class _TranslatorScreen extends State<TranslatorScreen> {
                             const BorderSide(color: Colors.black, width: 4)),
                     hintText: "Enter text to translate",
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      inputText = value;
-                    });
-                  },
+                  onChanged:
+                      _onInputChanged, // Call the custom onChanged function
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -308,14 +355,14 @@ class _TranslatorScreen extends State<TranslatorScreen> {
                     ElevatedButton.icon(
                       onPressed: translatorText,
                       icon: const Icon(Icons.swap_horiz_sharp,
-                          color: Colors.white, size: 25),
+                          color: Colors.black, size: 25),
                       label: const Text("Translate",
                           style: TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 20,
                               fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue),
+                          backgroundColor: const Color.fromARGB(255, 232, 60, 141)),
                     ),
                   ],
                 ),
@@ -411,11 +458,25 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final Set<int> selectedIndexes = {};
+  bool isAllSelected = false; // Tracks "Select All" state
+
+  void _toggleSelectAll() {
+    setState(() {
+      if (isAllSelected) {
+        selectedIndexes.clear();
+      } else {
+        selectedIndexes
+            .addAll(List.generate(widget.history.length, (index) => index));
+      }
+      isAllSelected = !isAllSelected;
+    });
+  }
 
   void _deleteSelectedTexts() {
     widget.onDelete(selectedIndexes.toList());
     setState(() {
       selectedIndexes.clear();
+      isAllSelected = false;
     });
   }
 
@@ -423,20 +484,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("History"),
+        title: const Text("History",
+         style: TextStyle(
+            color: Colors.yellowAccent,
+            fontWeight: FontWeight.bold,
+            fontSize: 25,
+          ),
+        ),
         backgroundColor: Colors.pink,
         actions: [
+          // "Select All" Checkbox
+          Checkbox(
+            checkColor: Colors.white,
+            value: isAllSelected,
+            onChanged: (value) => _toggleSelectAll(),
+          ),
+          // Delete Icon
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.white),
             onPressed: _deleteSelectedTexts,
           ),
+          // Checkmark Icon
           IconButton(
             icon: const Icon(Icons.check, color: Colors.white),
             onPressed: () {
-              final selectedTexts = selectedIndexes
-                  .map((index) => widget.history[index].originalText)
-                  .toList();
-              Navigator.pop(context, selectedTexts);
+              Navigator.pop(
+                  context,
+                  widget.history
+                      .where((item) => selectedIndexes
+                          .contains(widget.history.indexOf(item)))
+                      .map((item) => item.originalText)
+                      .toList());
             },
           ),
         ],
@@ -446,23 +524,43 @@ class _HistoryScreenState extends State<HistoryScreen> {
           : ListView.builder(
               itemCount: widget.history.length,
               itemBuilder: (context, index) {
-                final historyItem = widget.history[index];
-                return ListTile(
-                  title: Text('Original: ${historyItem.originalText}'),
-                  subtitle: Text('Translated: ${historyItem.translatedText}'),
-                  leading: Checkbox(
-                    value: selectedIndexes.contains(index),
-                    onChanged: (isSelected) {
-                      setState(() {
-                        if (isSelected == true) {
-                          selectedIndexes.add(index);
-                        } else {
-                          selectedIndexes.remove(index);
-                        }
-                      });
-                    },
-                  ),
-                );
+                return
+                ListTile(
+  leading: Checkbox(
+    value: selectedIndexes.contains(index),
+    onChanged: (bool? value) {
+      setState(() {
+        if (value!) {
+          selectedIndexes.add(index);
+        } else {
+          selectedIndexes.remove(index);
+        }
+      });
+    },
+  ),
+  title: Row(
+    children: [
+      const Text(
+        "Original: ",
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+      ),
+      Expanded(
+        child: Text(widget.history[index].originalText),
+      ),
+    ],
+  ),
+  subtitle: Row(
+    children: [
+      const Text(
+        "Translated: ",
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+      ),
+      Expanded(
+        child: Text(widget.history[index].translatedText),
+      ),
+    ],
+  ),
+);
               },
             ),
     );
