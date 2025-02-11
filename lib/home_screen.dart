@@ -559,7 +559,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
           ],
         ),
       ),
-      body: Center(
+      body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
