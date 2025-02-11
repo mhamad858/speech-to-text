@@ -671,10 +671,10 @@ class HistoryScreen extends StatefulWidget {
   final Function(List<int>) onDelete;
 
   const HistoryScreen({
-    Key? key,
+    super.key,
     required this.history,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   _HistoryScreenState createState() => _HistoryScreenState();
