@@ -560,6 +560,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
         ),
       ),
       body: SafeArea(
+        child:SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -661,6 +662,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
             )
           ],
         ),
+      ),
       ),
     );
   }
