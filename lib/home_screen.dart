@@ -240,7 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       backgroundColor: const Color.fromARGB(255, 117, 210, 226),
-      body: Center(
+      body: SafeArea(
+        child:SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -331,6 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
