@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initSpeechState();
-    _loadRecognizedText();  // Load the saved text
+    _loadRecognizedText();
     _loadHistory();
   }
 
@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _showSnackBar("Text Saved to History");
     }
   }
-//(Speech To Text)،(Text To Speech)،(Translation)
+
   // Show a Snackbar with a message
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -143,7 +143,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final selectedTexts = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HistoryScreen(history: _history,
+        builder: (context) => HistoryScreen(
+          history: _history,
           onDelete: (selectedIndexes) {
             setState(() {
               selectedIndexes.sort((a, b) => b.compareTo(a));
@@ -172,8 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.pink,
         title: const Text(
           "Speech To Text",
-          style: TextStyle(
-            color: Colors.yellowAccent,
+          style: TextStyle(color: Colors.yellowAccent,
             fontWeight: FontWeight.bold,
             fontSize: 35,
           ),
@@ -192,7 +192,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.pink,
-                
               ),
               child: Text(
                 'Select a service',
@@ -241,103 +240,98 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       backgroundColor: const Color.fromARGB(255, 117, 210, 226),
       body: SafeArea(
-        child:SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Speech Recognition",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Speech Recognition",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: _isListening ? _startListening : _stopListening,
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_off,
-                color: Colors.black,
-                size: 25,
-              ),
-              label: Text(
-                _isListening ? "Speech" : "Stop",
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 232, 60, 141),
-              ),),
-            const SizedBox(height: 20),
-            Container(
-              height: MediaQuery.of(context).size.height / 4,
-              width: 1000,
-              padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 9, 231, 142),
-                border: Border.all(
+              const SizedBox(height: 40),
+              ElevatedButton.icon(
+                onPressed: _isListening ? _startListening : _stopListening,
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_off,
                   color: Colors.black,
-                  width: 2,
+                  size: 25,
                 ),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: SingleChildScrollView(
-                child: Text(
-                  _recognizedText.isNotEmpty
-                      ? _recognizedText
-                      : "Result Here....",
-                  textAlign: TextAlign.center,
+                label: Text(
+                  _isListening ? "Speech" : "Stop",
                   style: const TextStyle(
-                    fontSize: 19,
-                    color: Colors.white,
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 232, 60, 141),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 9, 231, 142),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    _recognizedText.isNotEmpty? _recognizedText
+                        : "Result Here....",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _copyText,
-                  icon: const Icon(Icons.copy, color: Colors.white),
-                  label:
-                      const Text("Copy", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  onPressed: _saveToHistory,
-                  icon: const Icon(Icons.save, color: Colors.white),
-                  label: const Text("Save To History",
-                      style: TextStyle(color: Colors.white)),
-                  style:
-                      ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  onPressed: _deleteText,
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  label: const Text("Delete",
-                      style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _copyText,
+                    icon: const Icon(Icons.copy, color: Colors.white),
+                    label: const Text("Copy", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   ),
-                )
-              ],
-            ),
-          ],
+                  const SizedBox(width: 20),
+                  ElevatedButton.icon(
+                    onPressed: _saveToHistory,
+                    icon: const Icon(Icons.save, color: Colors.white),
+                    label: const Text("Save To History",
+                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  ),
+                  const SizedBox(width: 20),
+                  ElevatedButton.icon(
+                    onPressed: _deleteText,
+                    icon: const Icon(Icons.delete, color: Colors.white),
+                    label: const Text("Delete",
+                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
 }
-
 class TextToSpeechScreen extends StatefulWidget {
   const TextToSpeechScreen({super.key});
 
