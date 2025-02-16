@@ -641,7 +641,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                     ElevatedButton.icon(
                       onPressed: _saveToHistory,
                       icon: const Icon(Icons.save, color: Colors.white),
-                      label: const Text("Save gg",
+                      label: const Text("Save",
                           style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                     ),
