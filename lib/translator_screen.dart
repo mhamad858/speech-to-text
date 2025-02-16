@@ -395,7 +395,7 @@ Future<void> translatorText() async {
                     ElevatedButton.icon(
                       onPressed: _saveToHistory,
                       icon: const Icon(Icons.save, color: Colors.white),
-                      label: const Text("Save To History",
+                      label: const Text("Save",
                           style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green),
@@ -495,7 +495,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           // "Select All" Checkbox
           Checkbox(
-            checkColor: Colors.white,
+            checkColor: Colors.grey,
             value: isAllSelected,
             onChanged: (value) => _toggleSelectAll(),
           ),
