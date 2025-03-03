@@ -4,6 +4,7 @@ import 'package:mh_app/translator_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 
 void main() {
@@ -39,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initSpeechState();
-    _loadRecognizedText();  // Load the saved text
+    _loadRecognizedText(); // Load the saved text
     _loadHistory();
   }
 
@@ -82,24 +83,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Start speech recognition
   void _startListening() {
-    _speech.listen(onResult: (result) {
-      setState(() {
-        _recognizedText = result.recognizedWords;
-        _saveRecognizedText();  // Save text whenever it updates
-      });
-    });
-    setState(() {
-      _isListening = false;
-    });
-  }
+  setState(() {
+    _recognizedText = ""; // Clear text at the start
+  });
 
-  // Stop speech recognition
-  void _stopListening() {
-    _speech.stop();
-    setState(() {
-      _isListening = true;
-    });
-  }
+  _speech.listen(
+    onResult: (result) {
+      if (result.finalResult) { // Only update if the result is final
+        setState(() {
+          _recognizedText = result.recognizedWords;
+        });
+      }
+    },
+  );
+
+  setState(() {
+    _isListening = false; // Ensure correct mic state
+  });
+}
+
+void _stopListening() {
+  _speech.stop();
+  setState(() {
+    _isListening = true;
+  });
+}
 
   // Copy recognized text to clipboard
   void _copyText() {
@@ -113,22 +121,26 @@ class _HomeScreenState extends State<HomeScreen> {
       _recognizedText = "";
     });
     _speech.stop();
-    _saveRecognizedText();  // Clear saved text when deleted
+    _saveRecognizedText(); // Clear saved text when deleted
     _showSnackBar("Text Deleted");
   }
 
   // Save recognized text to history
   void _saveToHistory() {
     if (_recognizedText.isNotEmpty) {
+      DateTime now = DateTime.now();
       setState(() {
-        _history.add(_recognizedText);
-        _recognizedText = "";
+        _history.add(jsonEncode({
+          "text": _recognizedText,
+          "timestamp": now.toIso8601String(), // Add timestamp
+        }));
+        
       });
       _saveHistory();
-      _saveRecognizedText();  // Save the empty text after saving history
       _showSnackBar("Text Saved to History");
     }
   }
+
 //(Speech To Text)،(Text To Speech)،(Translation)
   // Show a Snackbar with a message
   void _showSnackBar(String message) {
@@ -143,7 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final selectedTexts = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HistoryScreen(history: _history,
+        builder: (context) => HistoryScreen(
+          history: _history,
           onDelete: (selectedIndexes) {
             setState(() {
               selectedIndexes.sort((a, b) => b.compareTo(a));
@@ -152,16 +165,16 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               _saveHistory();
             });
-          }, storageKey: '',
+          },
+          storageKey: '',
         ),
       ),
     );
 
     if (selectedTexts != null && selectedTexts.isNotEmpty) {
       setState(() {
-        _recognizedText += " ${selectedTexts.join("")}"; 
-        _saveRecognizedText();  // Save the updated text
-        
+        _recognizedText += "${selectedTexts.join("")}";
+        _saveRecognizedText(); // Save the updated text
       });
     }
   }
@@ -176,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(
             color: Colors.yellowAccent,
             fontWeight: FontWeight.bold,
-            fontSize: 35,
+            fontSize: 25,
           ),
         ),
         actions: [
@@ -193,7 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.pink,
-                
               ),
               child: Text(
                 'Select a service',
@@ -242,95 +254,99 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       backgroundColor: const Color.fromARGB(255, 117, 210, 226),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Speech Recognition",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Speech Recognition",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: _isListening ? _startListening : _stopListening,
-              icon: Icon(
-                _isListening ? Icons.mic : Icons.mic_off,
-                color: Colors.black,
-                size: 25,
-              ),
-              label: Text(
-                _isListening ? "Speech" : "Stop",
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 232, 60, 141),
-              ),),
-            const SizedBox(height: 20),
-            Container(
-              height: MediaQuery.of(context).size.height / 4,
-              width: 1000,
-              padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 9, 231, 142),
-                border: Border.all(
+              const SizedBox(height: 40),
+              ElevatedButton.icon(
+                onPressed: _isListening ? _startListening : _stopListening,
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_off,
                   color: Colors.black,
-                  width: 2,
+                  size: 25,
                 ),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: SingleChildScrollView(
-                child: Text(
-                  _recognizedText.isNotEmpty
-                      ? _recognizedText
-                      : "Result Here....",
-                  textAlign: TextAlign.center,
+                label: Text(
+                  _isListening ? "Speech" : "Stop",
                   style: const TextStyle(
-                    fontSize: 19,
-                    color: Colors.white,
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 232, 60, 141),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                height: MediaQuery.of(context).size.height / 4,
+                width: 1000,
+                padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 9, 231, 142),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    _recognizedText.isNotEmpty
+                        ? _recognizedText
+                        : "Result Here....",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _copyText,
-                  icon: const Icon(Icons.copy, color: Colors.white),
-                  label:
-                      const Text("Copy", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  onPressed: _saveToHistory,
-                  icon: const Icon(Icons.save, color: Colors.white),
-                  label: const Text("Save",
-                      style: TextStyle(color: Colors.white)),
-                  style:
-                      ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  onPressed: _deleteText,
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  label: const Text("Delete",
-                      style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _copyText,
+                    icon: const Icon(Icons.copy, color: Colors.white),
+                    label: const Text("Copy",
+                        style: TextStyle(color: Colors.white)),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   ),
-                )
-              ],
-            ),
-          ],
+                  const SizedBox(width: 20),
+                  ElevatedButton.icon(
+                    onPressed: _saveToHistory,
+                    icon: const Icon(Icons.save, color: Colors.white),
+                    label: const Text("Save",
+                        style: TextStyle(color: Colors.white)),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  ),
+                  const SizedBox(width: 20),
+                  ElevatedButton.icon(
+                    onPressed: _deleteText,
+                    icon: const Icon(Icons.delete, color: Colors.white),
+                    label: const Text("Delete",
+                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -438,19 +454,23 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
       Clipboard.setData(ClipboardData(text: textController.text));
       _showSnackBar("Text copied");
     }
-  }
+  }//textController.text
 
-  void _saveToHistory() async {
+  Future<void> _saveToHistory() async {
     if (textController.text.isNotEmpty) {
+      DateTime now = DateTime.now();
       setState(() {
-        if (!_history.contains(textController.text)) {
-          _history.add(textController.text);
-        }
+        _history.add(jsonEncode({
+          "text": textController.text,
+          "timestamp": now.toIso8601String(), // Add timestamp
+        }));
+       
       });
       await _saveHistoryToStorage();
       _showSnackBar("Text Saved to History");
     }
   }
+
 
   void _navigateToHistory() async {
     final List<String>? selectedTexts = await Navigator.push(
@@ -467,13 +487,15 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
             });
             _saveHistoryToStorage();
           },
-          storageKey: 'textToSpeechHistory', // Unique key for Text to Speech history
+          storageKey:
+              'textToSpeechHistory', // Unique key for Text to Speech history
         ),
       ),
     );
     if (selectedTexts != null && selectedTexts.isNotEmpty) {
       setState(() {
-        textController.text += (textController.text.isNotEmpty ? " " : "") + selectedTexts.join(" ");
+        textController.text += (textController.text.isNotEmpty ? " " : "") +
+            selectedTexts.join(" ");
       });
       _saveText();
     }
@@ -492,7 +514,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
               style: TextStyle(
                 color: Colors.yellow,
                 fontWeight: FontWeight.bold,
-                fontSize: 35,
+                fontSize: 25,
               ),
             ),
           ),
@@ -573,7 +595,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                   "Volume Listening",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 40,
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -592,7 +614,8 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                     style: const TextStyle(
                         color: Colors.black,
                         fontSize: 20,
-                        fontWeight: FontWeight.bold),),
+                        fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 232, 60, 141),
                   ),
@@ -635,7 +658,8 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                       icon: const Icon(Icons.copy, color: Colors.white),
                       label: const Text("Copy",
                           style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue),
                     ),
                     const SizedBox(width: 20),
                     ElevatedButton.icon(
@@ -643,7 +667,8 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                       icon: const Icon(Icons.save, color: Colors.white),
                       label: const Text("Save",
                           style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green),
                     ),
                     const SizedBox(width: 20),
                     ElevatedButton.icon(
@@ -664,8 +689,6 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
     );
   }
 }
-
-
 
 class HistoryScreen extends StatefulWidget {
   final List<String> history;
@@ -692,7 +715,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (_isSelectAll) {
         _selectedIndexes.clear();
       } else {
-        _selectedIndexes.addAll(List.generate(widget.history.length, (index) => index));
+        _selectedIndexes
+            .addAll(List.generate(widget.history.length, (index) => index));
       }
       _isSelectAll = !_isSelectAll;
     });
@@ -700,7 +724,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _deleteSelected() async {
     if (_selectedIndexes.isNotEmpty) {
-      List<int> sortedIndexes = _selectedIndexes.toList()..sort((a, b) => b.compareTo(a));
+      List<int> sortedIndexes = _selectedIndexes.toList()
+        ..sort((a, b) => b.compareTo(a));
       setState(() {
         widget.onDelete(sortedIndexes); // Delete items from parent
         _selectedIndexes.clear();
@@ -715,8 +740,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _returnSelected() {
     if (_selectedIndexes.isNotEmpty) {
-      List<String> selectedTexts = _selectedIndexes.map((index) => widget.history[index]).toList();
-      Navigator.pop(context, selectedTexts);
+      List<String>? selectedTexts = _selectedIndexes
+          .map((index) {
+            Map<String, dynamic> item = jsonDecode(widget.history[index]);
+            return item["text"];
+          })
+          .cast<String>()
+          .toList();
+      Navigator.pop(context,
+          selectedTexts); // Return selected texts to the previous screen
     }
   }
 
@@ -757,7 +789,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               itemCount: widget.history.length,
               itemBuilder: (context, index) {
                 return HistoryListItem(
-                  text: widget.history[index],
+                  historyItem: widget.history[index],
                   index: index,
                   isSelected: _selectedIndexes.contains(index),
                   onSelect: _toggleItemSelection,
@@ -779,15 +811,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
+// For date formatting
+
 class HistoryListItem extends StatelessWidget {
-  final String text;
+  final String historyItem;
   final int index;
   final bool isSelected;
   final Function(int) onSelect;
 
   const HistoryListItem({
     super.key,
-    required this.text,
+    required this.historyItem,
     required this.index,
     required this.isSelected,
     required this.onSelect,
@@ -795,13 +829,44 @@ class HistoryListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Decode the JSON-encoded history item
+    Map<String, dynamic> item = jsonDecode(historyItem);
+
+    // Use null-safe access with default values
+    String text = item["text"] ?? "No Text";
+    DateTime timestamp = item["timestamp"] != null
+        ? DateTime.parse(item["timestamp"]) // Parse the timestamp
+        : DateTime.now(); // Fallback to current time if timestamp is null
+
+    // Format the date and time
+    String formattedDate = DateFormat('M/d/yyyy - h:mm a').format(timestamp);
+
     return ListTile(
-      title: Text(text),
       leading: Checkbox(
         value: isSelected,
         onChanged: (bool? checked) {
           onSelect(index);
         },
+      ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Text with wrapping
+          Text(
+            text,
+            style: const TextStyle(fontSize: 16),
+            softWrap: true, // Allow text to wrap to the next line
+            overflow: TextOverflow.visible, // Ensure text doesn't overflow
+          ),
+          // Date aligned to the right
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Date: $formattedDate',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+          ),
+        ],
       ),
       onTap: () {
         onSelect(index);

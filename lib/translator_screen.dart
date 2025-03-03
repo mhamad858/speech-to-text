@@ -201,7 +201,7 @@ Future<void> translatorText() async {
           style: TextStyle(
             color: Colors.yellow,
             fontWeight: FontWeight.bold,
-            fontSize: 35,
+            fontSize: 25,
           ),
         ),
         backgroundColor: Colors.pink,
@@ -424,20 +424,29 @@ Future<void> translatorText() async {
 class TranslationHistory {
   final String originalText;
   final String translatedText;
+  final DateTime timestamp;  // Add this line
 
-  TranslationHistory(
-      {required this.originalText,
-      required this.translatedText}); // Convert object to JSON
+  TranslationHistory({
+    required this.originalText,
+    required this.translatedText,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();  // Default to current time
+
+  // Convert object to JSON
   Map<String, dynamic> toJson() => {
-        'originalText': originalText,
-        'translatedText': translatedText,
-      };
+    'originalText': originalText,
+    'translatedText': translatedText,
+    'timestamp': timestamp.toIso8601String(),  // Store timestamp
+  };
 
   // Create object from JSON
   factory TranslationHistory.fromJson(Map<String, dynamic> json) {
     return TranslationHistory(
       originalText: json['originalText'],
       translatedText: json['translatedText'],
+      timestamp: json.containsKey('timestamp')
+          ? DateTime.tryParse(json['timestamp']) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }
@@ -485,7 +494,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("History",
-         style: TextStyle(
+          style: TextStyle(
             color: Colors.yellowAccent,
             fontWeight: FontWeight.bold,
             fontSize: 25,
@@ -524,43 +533,59 @@ class _HistoryScreenState extends State<HistoryScreen> {
           : ListView.builder(
               itemCount: widget.history.length,
               itemBuilder: (context, index) {
-                return
-                ListTile(
-  leading: Checkbox(
-    value: selectedIndexes.contains(index),
-    onChanged: (bool? value) {
-      setState(() {
-        if (value!) {
-          selectedIndexes.add(index);
-        } else {
-          selectedIndexes.remove(index);
-        }
-      });
-    },
-  ),
-  title: Row(
-    children: [
-      const Text(
-        "Original: ",
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
-      ),
-      Expanded(
-        child: Text(widget.history[index].originalText),
-      ),
-    ],
-  ),
-  subtitle: Row(
-    children: [
-      const Text(
-        "Translated: ",
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
-      ),
-      Expanded(
-        child: Text(widget.history[index].translatedText),
-      ),
-    ],
-  ),
-);
+                return ListTile(
+                  leading: Checkbox(
+                    value: selectedIndexes.contains(index),
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value!) {
+                          selectedIndexes.add(index);
+                        } else {
+                          selectedIndexes.remove(index);
+                        }
+                      });
+                    },
+                  ),
+                  title: Row(
+                    children: [
+                      const Text(
+                        "Original: ",
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                      ),
+                      Expanded(
+                        child: Text(widget.history[index].originalText),
+                      ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            "Translated: ",
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                          ),
+                          Expanded(
+                            child: Text(widget.history[index].translatedText),
+                          ),],
+                      ),
+                      const SizedBox(height: 4),
+                      // Display timestamp if available
+                      Align(
+                        alignment: Alignment.centerRight,
+                     child:  Text(
+  'Date: ${widget.history[index].timestamp != null ? 
+  "${widget.history[index].timestamp.toLocal()
+  .day}/${widget.history[index].timestamp.toLocal().month}/${widget.history[index]
+  .timestamp.toLocal().year} - ${TimeOfDay.fromDateTime(widget.history[index].timestamp)
+  .format(context)}" : "Unknown"}',
+  style: const TextStyle(fontSize: 10, color: Colors.grey),
+),
+                      )
+                    ],
+                  ),
+                );
               },
             ),
     );
