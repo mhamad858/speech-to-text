@@ -82,39 +82,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Start speech recognition
-  void _startListening() async {
+  void _startListening() {
   setState(() {
     _recognizedText = ""; // Clear text at the start
   });
 
-  bool isFinalResultProcessed = false; // Flag to track final results
-
-  _speech.listen(
-    onResult: (result) {
-      if (result.finalResult && !isFinalResultProcessed) { // Only process final results once
-        setState(() {
-          _recognizedText = result.recognizedWords; // Update with final result
-        });
-        isFinalResultProcessed = true; // Mark the final result as processed
-      }
-    },
-    listenFor: Duration(minutes: 1), // Set a reasonable time limit
-    pauseFor: Duration(seconds: 5), // Pause after 5 seconds of silence
-    partialResults: false, // Disable partial results
-  );
+  _speech.listen(onResult: (result) {
+    if (_recognizedText.isEmpty) { // Only update if it's empty
+      setState(() {
+        _recognizedText = result.recognizedWords; 
+      });
+      _stopListening(); // Stop listening after the first recognition
+    }
+  });
 
   setState(() {
     _isListening = false; // Ensure correct mic state
   });
 }
 
-  // Stop speech recognition
-  void _stopListening() {
-    _speech.stop();
-    setState(() {
-      _isListening = true;
-    });
-  }
+// Stop speech recognition
+void _stopListening() {
+  _speech.stop();
+  setState(() {
+    _isListening = true;
+  });
+}
 
   // Copy recognized text to clipboard
   void _copyText() {
