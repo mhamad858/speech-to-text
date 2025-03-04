@@ -190,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.pink,
         title: const Text(
-          "Speech To Text",
+          "Speech Tot Text",
           style: TextStyle(
             color: Colors.yellowAccent,
             fontWeight: FontWeight.bold,
