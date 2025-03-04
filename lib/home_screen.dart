@@ -82,27 +82,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Start speech recognition
-  void _startListening() {
+  void _startListening() async {
   setState(() {
     _recognizedText = ""; // Clear text at the start
   });
 
-  DateTime lastUpdateTime = DateTime.now(); // Track the last update time
+  // Reinitialize the speech recognition instance
+  await _speech.initialize();
 
-  _speech.listen(onResult: (result) {
-    if (_recognizedText != result.recognizedWords) {
-      // Check if at least 500ms have passed since the last update
-      if (DateTime.now().difference(lastUpdateTime).inMilliseconds > 500) {
+  _speech.listen(
+    onResult: (result) {
+      print("Result: ${result.recognizedWords}, Final: ${result.finalResult}");
+      if (result.finalResult) { // Only update if the result is final
         setState(() {
-          _recognizedText = result.recognizedWords; // Only update if different
+          _recognizedText = result.recognizedWords; // Update with final result
         });
-        lastUpdateTime = DateTime.now(); // Update the last update time
       }
-    }
-  });
+    },
+    listenFor: Duration(minutes: 1),
+    pauseFor: Duration(seconds: 5),
+    partialResults: false, // Disable partial results
+  );
 
   setState(() {
-    _isListening = false; // Ensure correct mic state
+    _isListening = false; // Update mic state
   });
 }
 
