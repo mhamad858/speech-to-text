@@ -87,25 +87,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _recognizedText = ""; // Clear text at the start
   });
 
-  // Reinitialize the speech recognition instance
-  await _speech.initialize();
+  bool isFinalResultProcessed = false; // Flag to track final results
 
   _speech.listen(
     onResult: (result) {
-      print("Result: ${result.recognizedWords}, Final: ${result.finalResult}");
-      if (result.finalResult) { // Only update if the result is final
+      if (result.finalResult && !isFinalResultProcessed) { // Only process final results once
         setState(() {
           _recognizedText = result.recognizedWords; // Update with final result
         });
+        isFinalResultProcessed = true; // Mark the final result as processed
       }
     },
-    listenFor: Duration(minutes: 1),
-    pauseFor: Duration(seconds: 5),
+    listenFor: Duration(minutes: 1), // Set a reasonable time limit
+    pauseFor: Duration(seconds: 5), // Pause after 5 seconds of silence
     partialResults: false, // Disable partial results
   );
 
   setState(() {
-    _isListening = false; // Update mic state
+    _isListening = false; // Ensure correct mic state
   });
 }
 
