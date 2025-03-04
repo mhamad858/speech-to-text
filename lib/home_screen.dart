@@ -83,22 +83,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Start speech recognition
   void _startListening() {
-    setState(() {
-      _recognizedText = ""; // Clear text at the start
-    });
+  setState(() {
+    _recognizedText = ""; // Clear text at the start
+  });
 
-    _speech.listen(onResult: (result) {
-      if (_recognizedText != result.recognizedWords) {
+  DateTime lastUpdateTime = DateTime.now(); // Track the last update time
+
+  _speech.listen(onResult: (result) {
+    if (_recognizedText != result.recognizedWords) {
+      // Check if at least 500ms have passed since the last update
+      if (DateTime.now().difference(lastUpdateTime).inMilliseconds > 500) {
         setState(() {
           _recognizedText = result.recognizedWords; // Only update if different
         });
+        lastUpdateTime = DateTime.now(); // Update the last update time
       }
-    });
+    }
+  });
 
-    setState(() {
-      _isListening = false; // Ensure correct mic state
-    });
-  }
+  setState(() {
+    _isListening = false; // Ensure correct mic state
+  });
+}
 
   // Stop speech recognition
   void _stopListening() {
