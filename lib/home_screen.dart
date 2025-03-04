@@ -90,16 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
   _speech.listen(onResult: (result) {
     String newText = result.recognizedWords.trim();
 
-    // Prevent duplicate writing of the same text
-    if (_recognizedText != newText) {
+    // Check if the new text is already contained in the recognized text
+    if (!_recognizedText.endsWith(newText)) {
       setState(() {
-        _recognizedText = newText;
+        _recognizedText = newText; // Only update with new words
       });
     }
   });
 
   setState(() {
-    _isListening = false; // Ensure correct mic state
+    _isListening = true; // Ensure correct mic state
   });
 }
 
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
 void _stopListening() {
   _speech.stop();
   setState(() {
-    _isListening = true;
+    _isListening = false;
   });
 }
 
