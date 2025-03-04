@@ -88,11 +88,13 @@ class _HomeScreenState extends State<HomeScreen> {
   });
 
   _speech.listen(onResult: (result) {
-    if (_recognizedText.isEmpty) { // Only update if it's empty
+    String newText = result.recognizedWords.trim();
+
+    // Prevent duplicate writing of the same text
+    if (_recognizedText != newText) {
       setState(() {
-        _recognizedText = result.recognizedWords; 
+        _recognizedText = newText;
       });
-      _stopListening(); // Stop listening after the first recognition
     }
   });
 
