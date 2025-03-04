@@ -83,31 +83,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Start speech recognition
   void _startListening() {
-  setState(() {
-    _recognizedText = ""; // Clear text at the start
-  });
+    setState(() {
+      _recognizedText = ""; // Clear text at the start
+    });
 
-  _speech.listen(
-    onResult: (result) {
-      if (result.finalResult) { // Only update if the result is final
+    _speech.listen(onResult: (result) {
+      if (_recognizedText != result.recognizedWords) {
         setState(() {
-          _recognizedText = result.recognizedWords;
+          _recognizedText = result.recognizedWords; // Only update if different
         });
       }
-    },
-  );
+    });
 
-  setState(() {
-    _isListening = false; // Ensure correct mic state
-  });
-}
+    setState(() {
+      _isListening = false; // Ensure correct mic state
+    });
+  }
 
-void _stopListening() {
-  _speech.stop();
-  setState(() {
-    _isListening = true;
-  });
-}
+  // Stop speech recognition
+  void _stopListening() {
+    _speech.stop();
+    setState(() {
+      _isListening = true;
+    });
+  }
 
   // Copy recognized text to clipboard
   void _copyText() {
@@ -352,6 +351,7 @@ void _stopListening() {
     );
   }
 }
+
 
 class TextToSpeechScreen extends StatefulWidget {
   const TextToSpeechScreen({super.key});
